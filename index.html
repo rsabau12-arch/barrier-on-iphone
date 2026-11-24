@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0d7775">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Barrier ON">
+  <meta name="description" content="Buton de acces bariera pentru familie">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <title>Barrier ON</title>
+  <style>
+    :root{color-scheme:light;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f8f7;color:#102a2a}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:22px 18px 44px}
+    main{width:min(100%,420px);text-align:center}
+    .head{letter-spacing:.12em;font-size:.84rem;font-weight:800;color:#0d7775;margin-bottom:8px}
+    h1{font-size:2rem;letter-spacing:-.045em;margin:0 0 6px}
+    .subtitle{color:#587575;font-size:.94rem;margin:0 0 33px}
+    .circle{display:block;margin:auto;width:min(59vw,220px);height:min(59vw,220px);min-width:160px;min-height:160px;border:0;border-radius:50%;color:#fff;background:linear-gradient(145deg,#20aaa3,#087976);box-shadow:0 16px 30px rgba(13,119,117,.25),inset 0 2px 2px rgba(255,255,255,.45);font-size:3.3rem;font-weight:800;letter-spacing:.03em;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:transform .12s,opacity .12s}
+    .circle:active:not(:disabled){transform:scale(.96)}
+    .circle:disabled{opacity:.55;cursor:default}
+    .status{margin:23px auto 26px;min-height:66px;font-size:1.02rem;line-height:1.4;font-weight:650;max-width:320px;display:flex;align-items:center;justify-content:center}
+    .status.ok{color:#08786b}.status.warn{color:#a05319}.status.error{color:#b22c36}
+    details{background:#fff;border:1px solid #d7e7e4;text-align:left;padding:17px 18px;border-radius:16px;box-shadow:0 3px 14px rgba(21,88,87,.04)}
+    summary{font-weight:740;cursor:pointer;outline-offset:5px}
+    label{display:block;margin:16px 0 8px;font-size:.9rem;font-weight:650}
+    .code-row{display:flex;gap:7px}
+    input{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9rem;border:1px solid #b7ceca;border-radius:9px;padding:12px;min-width:0;flex:1;width:100%;background:#fff;color:#0c2929}
+    .tiny-button{border:1px solid #bfdbd7;border-radius:9px;background:#f5fbfa;padding:10px 11px;font-weight:650;color:#075e5b}
+    .save{background:#0d7775;color:white;width:100%;border:0;border-radius:10px;padding:13px 14px;font-size:.96rem;font-weight:740;margin-top:12px}
+    .hint{font-size:.78rem;line-height:1.5;color:#587575;margin:12px 0 0}
+    .foot{font-size:.78rem;color:#688180;line-height:1.5;margin:20px 15px 0}
+    .pill{display:inline-block;background:#e0f1ee;padding:6px 10px;border-radius:15px;font-size:.78rem;font-weight:700;color:#08736e;margin:13px 0 0}
+    button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid #4bc5c0;outline-offset:3px}
+    @media(max-height:680px){body{display:block;padding-top:24px}.subtitle{margin-bottom:18px}.status{margin:12px auto 17px}}
+    @media(prefers-reduced-motion:reduce){.circle{transition:none}}
+  </style>
+</head>
+<body>
+<main>
+  <div class="head">BARRIER REMOTE · FAMILY</div>
+  <h1>Barrier ON</h1>
+  <p class="subtitle">Apasă pentru a solicita deschiderea barierei.</p>
+  <button id="on" class="circle" aria-label="Solicită deschiderea barierei">ON</button>
+  <div id="status" class="status" role="status" aria-live="polite">Introdu codul familiei pentru prima utilizare.</div>
+  <details id="settings">
+    <summary>Configurare cod familie</summary>
+    <label for="pair">Codul comun de 32 de caractere</label>
+    <div class="code-row">
+      <input id="pair" type="password" spellcheck="false" autocomplete="off" autocapitalize="none" placeholder="Codul din Barrier ON (Android)" maxlength="32" aria-describedby="privacy">
+      <button type="button" id="reveal" class="tiny-button" aria-label="Arată sau ascunde codul">Arată</button>
+    </div>
+    <button id="save" class="save" type="button">Salvează codul</button>
+    <p id="privacy" class="hint">Copiază codul deja folosit de familie. Nu îl publica într-un site, link sau fișier distribuit. Este păstrat numai în memoria locală a acestei aplicații web.</p>
+  </details>
+  <div id="paired" class="pill" hidden>Cod configurat</div>
+  <p class="foot">Tatăl trebuie să aibă Barrier Receiver activ și conexiune la internet. „Apel inițiat” nu confirmă că bariera s-a deschis.</p>
+</main>
+<script>
+'use strict';
+// Protocol implemented to match BarrierRemoteProject/{controller,agent}/.../Wire.java v1.1.
+// No shared secret or barrier number is embedded in this public source file.
+const STORE = 'barrier-family-code-v1';
+const BASE = 'https://ntfy.sh/';
+const encoder = new TextEncoder();
+const on = document.getElementById('on');
+const pairInput = document.getElementById('pair');
+const settings = document.getElementById('settings');
+const paired = document.getElementById('paired');
+const status = document.getElementById('status');
+let working = false;
+let pairing = '';
+try { pairing = localStorage.getItem(STORE) || ''; } catch (_) {}
+if (!/^[0-9a-f]{32}$/.test(pairing)) pairing = '';
+function show(message, level='normal') {
+  status.textContent = message;
+  status.className = 'status' + (level === 'normal' ? '' : ' ' + level);
+}
+function refresh() {
+  paired.hidden = !pairing;
+  settings.open = !pairing;
+  pairInput.value = pairing;
+  on.disabled = working || !pairing;
+  if (pairing) show('Pregătit. Apasă ON pentru deschidere.', 'ok');
+}
+function bytesToHex(bytes) { return Array.from(bytes, byte => byte.toString(16).padStart(2,'0')).join(''); }
+async function sha256(value) {
+  return bytesToHex(new Uint8Array(await crypto.subtle.digest('SHA-256',encoder.encode(value))));
+}
+async function topic(code, direction) {
+  return 'barrier-' + direction + '-' + (await sha256('barrierremote:v1:' + direction + ':' + code)).slice(0,40);
+}
+async function signature(code, message) {
+  // IMPORTANT: Java uses the UTF-8 BYTES OF THE 32-CHARACTER HEX STRING as the key,
+  // not the decoded 16 random bytes.
+  const key = await crypto.subtle.importKey('raw',encoder.encode(code),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  return bytesToHex(new Uint8Array(await crypto.subtle.sign('HMAC',key,encoder.encode(message))));
+}
+async function authenticate(code, payload) {
+  const last = payload.lastIndexOf('|');
+  if (last < 0) return false;
+  const actual = payload.slice(last + 1);
+  if (!/^[0-9a-f]{64}$/.test(actual)) return false;
+  const expected = await signature(code,payload.slice(0,last));
+  let equal = 0;
+  for (let i=0;i<64;i++) equal |= actual.charCodeAt(i) ^ expected.charCodeAt(i);
+  return equal === 0;
+}
+function responseText(code) {
+  switch(code) {
+    case 'CALL_STARTED': return ['Apel inițiat pe telefonul tatălui.','ok'];
+    case 'BUSY': return ['Tatăl este deja într-un apel. Bariera nu a fost apelată.','warn'];
+    case 'NO_NUMBER': return ['Numărul barierei nu este configurat.','error'];
+    case 'NO_PERMISSION': return ['Receiver-ul nu are permisiuni pentru apeluri.','error'];
+    case 'CALL_FAILED': return ['Telefonul tatălui nu a putut iniția apelul.','error'];
+    default: return null;
+  }
+}
+function delay(ms) { return new Promise(resolve => setTimeout(resolve,ms)); }
+async function pollForStatus(statusTopic,code,id,since) {
+  const address = BASE + encodeURIComponent(statusTopic) + '/json?poll=1&since=' + since;
+  const response = await fetch(address,{method:'GET',mode:'cors',cache:'no-store'});
+  if (!response.ok) throw new Error('Serverul de mesaje a răspuns cu HTTP ' + response.status);
+  const body = await response.text();
+  for (const line of body.split('\n')) {
+    if (!line.trim()) continue;
+    let event;
+    try { event = JSON.parse(line); } catch (_) { continue; }
+    if (event.event !== 'message' || typeof event.message !== 'string') continue;
+    const parts = event.message.split('|');
+    if (parts.length !== 5 || parts[0] !== 'STATUS' || parts[2] !== id) continue;
+    if (!(await authenticate(code,event.message))) continue;
+    const result = responseText(parts[3]);
+    if (result) return result;
+  }
+  return null;
+}
+async function send() {
+  if (working || !pairing) return;
+  working = true;
+  on.disabled = true;
+  document.getElementById('save').disabled = true;
+  show('Trimit comanda...');
+  const code = pairing;
+  const id = crypto.randomUUID(); // lowercase UUID matches Android receiver's regex
+  const unix = Math.floor(Date.now()/1000);
+  try {
+    const [requestTopic,statusTopic] = await Promise.all([topic(code,'request'),topic(code,'status')]);
+    const unsigned = 'REQ|' + unix + '|' + id;
+    const signed = unsigned + '|' + await signature(code,unsigned);
+    const response = await fetch(BASE + encodeURIComponent(requestTopic),{
+      method:'POST',mode:'cors',cache:'no-store',
+      headers:{'Content-Type':'text/plain'},body:signed
+    });
+    if (!response.ok) throw new Error('Serverul de mesaje a răspuns cu HTTP ' + response.status);
+    show('Comandă trimisă. Aștept răspunsul telefonului tatălui...');
+    // Poll the cached status topic, including statuses generated immediately after POST.
+    const deadline = Date.now() + 24000;
+    let success = null;
+    let lastError = null;
+    while (Date.now() < deadline) {
+      try {
+        success = await pollForStatus(statusTopic,code,id,unix-5);
+        lastError = null;
+        if (success) break;
+      } catch (err) { lastError = err; }
+      await delay(1600);
+    }
+    if (success) show(success[0],success[1]);
+    else if (lastError) show('Nu am putut verifica răspunsul. Verifică internetul.','error');
+    else show('Niciun răspuns de la telefonul tatălui. Verifică dacă Receiver este activ.','warn');
+  } catch(err) {
+    show('Nu am putut trimite comanda. Verifică internetul și încearcă din nou.','error');
+    console.warn('Barrier command error',err);
+  } finally {
+    working = false;
+    on.disabled = !pairing;
+    document.getElementById('save').disabled = false;
+  }
+}
+document.getElementById('save').addEventListener('click',()=>{
+  if (working) return;
+  const code = pairInput.value.trim().toLowerCase();
+  if (!/^[0-9a-f]{32}$/.test(code)) { show('Cod invalid. Introdu exact 32 de caractere (0–9, a–f).','error'); return; }
+  try { localStorage.setItem(STORE,code); } catch (_) { show('Browserul nu a permis salvarea codului.','error'); return; }
+  pairing=code;
+  settings.open=false;
+  refresh();
+});
+document.getElementById('reveal').addEventListener('click',()=>{
+  const visible=pairInput.type==='text';
+  pairInput.type=visible?'password':'text';
+  document.getElementById('reveal').textContent=visible?'Arată':'Ascunde';
+});
+on.addEventListener('click',send);
+refresh();
+</script>
+</body>
+</html>

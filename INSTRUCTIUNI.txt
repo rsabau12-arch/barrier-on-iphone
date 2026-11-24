@@ -1,0 +1,51 @@
+BARRIER ON PENTRU IPHONE - VARIANTA GRATUITA
+============================================
+
+Acest ZIP contine o aplicatie web (PWA), NU un APK si NU un IPA.
+Este compatibila la nivel de protocol cu Barrier Receiver Android v1.1:
+- aceleasi topicuri ntfy.sh derivate din codul de familie;
+- semnatura HMAC-SHA256 ca in Wire.java;
+- aceleasi statusuri: CALL_STARTED, BUSY, NO_NUMBER, NO_PERMISSION, CALL_FAILED.
+
+PUBLICARE GRATUITA PE GITHUB PAGES:
+1. Creeaza cont gratuit la https://github.com (daca nu ai deja).
+2. Creeaza un repository PUBLIC nou, de exemplu "barrier-on-iphone".
+3. Dezarhiveaza fisierul ZIP. In repository -> Add file -> Upload files,
+   incarca TOATE fisierele din folderul Barrier_ON_iPhone_PWA:
+   index.html, manifest.webmanifest, icon-192.png, icon-512.png.
+   Nu incarca ZIP-ul ca atare.
+4. In repository -> Settings -> Pages -> Build and deployment:
+   Source: Deploy from a branch; Branch: main; Folder: /(root); Save.
+5. Site-ul va avea un link de forma:
+   https://NUMELE-TAU.github.io/barrier-on-iphone/
+6. Deschide linkul in Safari pe iPhone-ul mamei. Din Share / Partajare,
+   alege "Add to Home Screen" / "Adauga pe ecranul principal".
+   Daca apare "Open as Web App", activeaz-o, apoi Add.
+7. Deschide iconita Barrier ON instalata pe ecranul principal.
+8. La "Configurare cod familie", introdu codul EXISTENT de 32 caractere
+   din aplicatia Barrier ON Android, apoi "Salveaza codul".
+   NU include niciodata codul in fisierele incarcate pe GitHub.
+9. Testati in prezenta tatalui tau cu Receiver deja activ.
+
+ATENTIE:
+- Acesta este un prototip. Nu a fost testat pe un iPhone real.
+- iPhone-ul trimite doar cererea HTTP prin internet. NU efectueaza apelul.
+  Telefonul Android al tatalui face apelul catre numarul barierei.
+- Conexiunea la internet este obligatorie pentru deschiderea barierei.
+- Daca doua persoane apasa simultan, al doilea apel poate primi BUSY.
+- "Apel initiat" nu confirma deschiderea fizica a barierei.
+- Salveaza codul in aplicatia deschisa DIN ICONITA de pe ecranul iPhone.
+  Stocarea Safari si a aplicatiei instalate poate fi separata.
+- GitHub Pages public poate fi vizitat de oricine. Secretul NU este in
+  codul sursa, insa oricine obtine codul de asociere poate actiona bariera.
+- Daca pierzi accesul la un telefon autorizat, schimba codul pe toate
+  dispozitivele, inclusiv Receiver-ul.
+- Gazduirea GitHub Pages este gratuita pentru repository-uri publice in
+  planul GitHub Free, conform documentatiei GitHub (la data crearii).
+- Serviciul gratuit ntfy.sh are limite si poate deveni indisponibil.
+
+SURSE:
+https://support.apple.com/guide/iphone/turn-a-website-into-an-app-iphea86e5236/ios
+https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages
+https://docs.ntfy.sh/publish/
+https://docs.ntfy.sh/subscribe/api/
